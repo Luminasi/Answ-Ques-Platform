@@ -77,3 +77,55 @@ python tools/build_qacp_corpus.py --download   # 原文件缺了，先下再转
 - **改写只拆不换说法**：多路检索取各路最小值，换说法会把拒答守卫的缝隙（约 0.04）吃掉。
 - **精排全量重打**：rerank 分数方向/量纲和向量距离不同，不能混着排。
 - **生成先答后免责**：先答已有的部分，不许拿「资料中没有…」开头。
+
+## rag_service —— HTTP 问答服务（SSE 流式 + 多轮会话记忆）
+
+把 baseline 流水线包成 HTTP 接口，补上 baseline 没有的两件事：**逐 token 流式输出**
+和**多轮会话记忆**。`rag_baseline/` 与 `docs_service/` 零改动 —— 整个包里只有
+`rag_service/pipeline.py` 一处 `import rag_baseline`，且只用它的公开函数。
+
+```
+python -m rag_service          # 默认 127.0.0.1:8001（HOST / PORT 可覆盖）
+```
+
+**端口 8001 是刻意的**：文档服务占着 8000，两个服务都要提供 `/api/health`，同端口会撞。
+接口契约（含 SSE 事件表、前端 fetch 消费方式）见 [前后端交互说明.md](前后端交互说明.md)。
+
+| 接口 | 说明 |
+|---|---|
+| `POST /api/answer` | 问答主接口，响应是 **SSE 流**（`meta` → `message`* → `sources` → `done`）。带 `conversation_id` 即多轮，不带则退化成单轮（行为与 baseline 完全一致，且全程不碰会话库） |
+| `POST /api/conversations` | 新建会话，返回 `id` |
+| `GET /api/conversations` | 会话列表（按最近更新倒序），供前端侧边栏 |
+| `GET /api/conversations/{id}/messages` | 查历史消息与引用来源 |
+| `GET /api/health` | `ok` / 未就绪时 503 `starting` |
+
+启动时会载入语料与向量库（指纹相符则秒级复用）、同步 `chunks` 影子表、**预热重排模型**
+（约 400MB 常驻内存，换掉第一个用户的模型加载等待；内存紧张设 `RAG_SKIP_RERANK_WARMUP=1` 关掉）。
+
+### 会话数据
+
+存 `knowledge/chat_history.db`（SQLite，标准库 `sqlite3`，零新依赖）。**删掉这个文件即重置
+全部会话**，与向量库一样属于「运行时生成、删掉可再生」，已在 `.gitignore` 里。
+
+四张表：`conversations` / `messages` / `citations`，外加一张从 Chroma 同步来的 `chunks`
+影子表 —— 设计文档里 `citations.chunk_id` 的外键要指向它，而本项目的语料块只存在向量库
+（`Document.metadata` 只有 `source` 一个字段，检索结果拿不到 vector_id），所以启动时按
+`vector_id` 幂等同步一份。
+
+历史窗口是**最近 8 条消息、总字符 ≤3000**（最旧先裁），只影响送进模型的上下文，不删库里的行。
+
+### 多轮是怎么做的
+
+历史非空才做**指代消解改写**（把「那它呢？」补成「Python 呢？」），改写后的问题用于检索与
+生成，落库的仍是用户原话。首轮/单轮模式跳过改写，此时提示词与 baseline **逐字节相同**。
+
+改写失败方向与 baseline 的 `rewrite` 一致：**失败 = 没改写，不是没检索**。超时、报错、输出
+不像话（空的 / 比原问题长 60 字以上 / 超过 3 行 / 抄了模板词）一律退回原问题 —— 最坏只是这
+一轮指代没补上，绝不会变成「什么都没检索到」。
+
+### 一个坑
+
+**重建向量库前先停掉本服务**：Windows 上服务进程持有 `chroma_db_baseline` 的文件句柄，
+不停服务就重建会撞文件锁。另外 `rag_baseline` 的路径全是相对路径，`config.py` 里那句
+`os.chdir(PROJECT_ROOT)` 是必须的，不是保险 —— 少了它，从别的目录启服务会读到空语料并
+安静地建一个空库。

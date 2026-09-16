@@ -21,6 +21,9 @@ _probe_db/
 # ── 运行时缓存（删掉重跑即可再生）──
 rewrites_cache.json
 
+# ── 课程报告等私人工作文件 ──
+.report_work/
+
 # ── 编辑器 / 系统 ──
 .vscode/
 .idea/

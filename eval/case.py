@@ -6,10 +6,15 @@
   src   该被检索到的那篇文档。可以写多篇：命中其中任意一篇都算对。
         **必须是列表** —— 写成字符串不会报错，但会静默退化成子串匹配
         （"a/cor.md" 能命中 "a/cors.md"），分数虚高。只写一篇也要 [] 包起来。
-        写法是 data/qacp_docs 下的**相对路径**（如 "q195.md"）。
-        src 两侧都会过 eval.norm()（折成正斜杠 + 小写）再比，所以照常写就行。
-  must  答案里应该出现的关键词（只在 CHECK_ANSWER=True 时用，
-        英文不区分大小写）。它只是**线索**，不是判据 —— 判据是「有没有答在问题上」。
+                写法是 data/fastapi_docs 下的**相对路径 + 正斜杠**。
+
+        ⚠️ 别信「和库里 metadata["source"] 一模一样」—— 那句是错的，原文已删。
+        库里存的其实是**反斜杠**（Windows 的 os.path.relpath 产物）：
+            库里    'advanced\\websockets.md'
+            题集    'advanced/websockets.md'
+        两边**不一样**。能对上，是因为匹配时 eval.norm() 把**两侧都**折成
+        「正斜杠 + 小写」再比（见 Eval/eval.py:71）。所以你照正斜杠写就对。
+  must  答案里应该出现的关键词（只在 CHECK_ANSWER=True 时用，英文不区分大小写）
 
 加题就照抄一个字典改内容。选题的判断标准只有一条：
 **这道题的答案只应该来自 src 里那几篇** —— 如果好几篇文档都能答，要么把 src 写全，
@@ -18,77 +23,80 @@
 三组不是凑数：A 组测「词对得上」的情况，C 组测「词对不上、只有意思对得上」的情况。
 真实用户问的是 C 组那种。以后加优化（改写、混合检索、精排），看哪一组涨得最多，
 就知道那个优化在治什么病。
-
-语料是 QACP 中文 Python 问答集（data/qacp_docs/，534 篇，10 个知识点），
-一篇问答一个文件，文件名即 qNNN.md。本题集覆盖其中 6 个知识点：
-字符串、异常处理、列表/集合、函数参数、模块导入、控制流、文件操作、OOP（类/继承/==与is）。
 """
 
 GROUPS = {
     "A 组 · 词面直白（文档里就叫这个词）": [
-        {"q": "什么是字符串？",
-         "src": ["q195.md"],
-         "must": ["字符串"]},
+        {"q": "CORS 是什么？怎么在 FastAPI 里配置？",
+         "src": ["tutorial/cors.md"],
+         "must": ["allow_origins"]},
 
-        {"q": "如何捕获异常？",
-         "src": ["q499.md"],
-         "must": ["try", "except"]},
+        {"q": "怎么用 FastAPI 上传文件？",
+         "src": ["tutorial/request-files.md", "tutorial/request-forms-and-files.md"],
+         "must": ["UploadFile"]},
 
-        {"q": "如何在列表中添加或删除元素？",
-         "src": ["q230.md", "q231.md"],
-         "must": ["append"]},
+        {"q": "怎么添加后台任务？",
+         "src": ["tutorial/background-tasks.md"],
+         "must": ["BackgroundTasks"]},
 
-        {"q": "默认参数是什么？",
-         "src": ["q306.md"],
-         "must": ["默认参数"]},
+        {"q": "FastAPI 怎么做依赖注入？",
+         "src": ["tutorial/dependencies/index.md",
+                 "tutorial/dependencies/classes-as-dependencies.md",
+                 "tutorial/dependencies/sub-dependencies.md",
+                 "tutorial/dependencies/dependencies-with-yield.md"],
+         "must": ["Depends"]},
 
-        {"q": "如何定义一个类？",
-         "src": ["q404.md"],
-         "must": ["class"]},
+        {"q": "怎么写 WebSocket 接口？",
+         "src": ["advanced/websockets.md"],
+         "must": ["WebSocket"]},
     ],
 
     "B 组 · 换个说法（概念对得上，字面不一样）": [
-        {"q": "怎么把多个字符串拼成一个？",
-         "src": ["q209.md"],
-         "must": ["+"]},
+        {"q": "怎么限制查询参数的最大值和最小值？",
+         "src": ["tutorial/query-params-str-validations.md",
+                 "tutorial/path-params-numeric-validations.md"],
+         "must": ["Query"]},
 
-        {"q": "读文件报错时，怎么让程序不崩？",
-         "src": ["q469.md"],
-         "must": ["try", "except"]},
+        {"q": "怎么控制接口返回的数据结构？",
+         "src": ["tutorial/response-model.md"],
+         "must": ["response_model"]},
 
-        {"q": "想用别人写好的功能包，怎么引进来？",
-         "src": ["q337.md"],
-         "must": ["import"]},
+        {"q": "一次请求里要怎么接收多个请求体参数？",
+         "src": ["tutorial/body-multiple-params.md"],
+         "must": ["Body"]},
 
-        {"q": "写循环时怎么中途停住？",
-         "src": ["q137.md"],
-         "must": ["break"]},
+        {"q": "怎么用中间件给每个请求计时？",
+         "src": ["tutorial/middleware.md", "advanced/middleware.md"],
+         "must": ["middleware"]},
 
-        {"q": "类的构造方法怎么写？",
-         "src": ["q354.md"],
-         "must": ["__init__"]},
+        {"q": "接口报错时怎么返回自定义的错误信息？",
+         "src": ["tutorial/handling-errors.md"],
+         "must": ["HTTPException"]},
     ],
 
     "C 组 · 口语化（文档里根本不出现这些词）": [
-        {"q": "循环跑到一半想不跑了，直接出来，怎么写？",
-         "src": ["q187.md"],
-         "must": ["break"]},
+        {"q": "前端调我的接口被浏览器拦住了，说是跨域，怎么办？",
+         "src": ["tutorial/cors.md"],
+         "must": ["CORSMiddleware"]},
 
-        {"q": "我有个列表，里面有些东西重复了，想只留一份",
-         "src": ["q269.md"],
-         "must": ["集合"]},
+        {"q": "程序启动时要连数据库、关闭时要断开，这段代码写哪儿？",
+         "src": ["advanced/events.md"],
+         "must": ["lifespan"]},
 
-        {"q": "程序打开一个不存在的文件直接就崩了，能不能让它别崩？",
-         "src": ["q467.md"],
-         "must": ["FileNotFoundError"]},
+        {"q": "怎么让某个接口必须登录才能用，没登录就报错？",
+         "src": ["tutorial/security/first-steps.md",
+                 "tutorial/security/index.md",
+                 "tutorial/security/get-current-user.md",
+                 "advanced/security/http-basic-auth.md"],
+         "must": ["401"]},
 
-        {"q": "别人写好的类，我想在它基础上加点自己的东西",
-         "src": ["q413.md"],
-         "must": ["继承"]},
+        {"q": "用户登录之后，我想给他发一个 Cookie 记着，怎么写？",
+         "src": ["advanced/response-cookies.md"],
+         "must": ["set_cookie"]},
 
-        {"q": "两个变量想确认它们是不是同一个对象，用 == 行不行？",
-         "src": ["q109.md"],
-         "must": ["is"]},
+        {"q": "上线部署的时候怎么用 Docker 打包？",
+         "src": ["deployment/docker.md"],
+         "must": ["Dockerfile"]},
     ],
 }
 
@@ -100,17 +108,16 @@ GROUPS = {
 # 把 Hit@1 那些数悄悄拉低。**分母被污染是不报错的**，所以从结构上隔开。
 #
 # 选题有两类，因为它们考的是不同难度：
-#   远的（红烧肉、电影、Excel）—— 语义上八竿子打不着，应该很好拒
-#   近的（贪吃蛇、发邮件）     —— **陷阱题**：同为 Python / 编程话题，
-#                             词面高度接近，嵌入距离会被拉得很近。
-#                             阈值守卫真正的对手是这一类，不是前一类。
-#                             已逐词核对过语料：贪吃蛇 / smtp / 发邮件 均 0 篇。
+#   远的（红烧肉、电影）  —— 语义上八竿子打不着，应该很好拒
+#   近的（Django、GC）    —— **陷阱题**：同为 Python / Web 话题，
+#                            词面高度接近，嵌入距离会被拉得很近。
+#                            阈值守卫真正的对手是这一类，不是前一类。
 REFUSALS = [
     # 远的
     "红烧肉怎么做才好吃？",
-    "推荐几部好看的科幻电影",
+    "推荐几部科幻电影",
     "怎么用 Excel 做数据透视表？",
     # 近的（陷阱题）
-    "怎么用 Python 写一个贪吃蛇游戏？",
-    "怎么用 Python 自动给用户发邮件？",
+    "怎么用 Django 写一个博客系统？",
+    "Python 的垃圾回收是怎么工作的？",
 ]

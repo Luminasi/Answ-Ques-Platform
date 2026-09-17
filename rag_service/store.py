@@ -219,7 +219,8 @@ def get_messages_with_citations(conversation_id):
         ids = [m["id"] for m in msgs]
         placeholders = ",".join("?" * len(ids))
         rows = c.execute(
-            "SELECT ct.message_id, ct.relevance_score, ct.snippet, ch.source"
+            "SELECT ct.message_id, ct.relevance_score, ct.snippet, ch.source,"
+            " (SELECT COUNT(*) FROM chunks c2 WHERE c2.source = ch.source AND c2.id <= ch.id) AS chunk_index"
             " FROM citations ct JOIN chunks ch ON ch.id = ct.chunk_id"
             f" WHERE ct.message_id IN ({placeholders})"
             " ORDER BY ct.relevance_score DESC",
@@ -244,6 +245,7 @@ def get_messages_with_citations(conversation_id):
                     "source": r["source"],
                     "score": round(float(r["relevance_score"]), 2),
                     "snippet": r["snippet"],
+                    "chunk_index": r["chunk_index"],
                 }
                 for rank, r in enumerate(citations, 1)
             ],
@@ -282,3 +284,26 @@ def get_chunk_id(source, content):
             "SELECT id FROM chunks WHERE source=? AND content=? LIMIT 1", (source, content)
         ).fetchone()
     return row["id"] if row else None
+
+
+def list_chunks(source):
+    """按建库/同步顺序返回某个文档的全部块。"""
+    with conn() as c:
+        rows = c.execute(
+            "SELECT id, content FROM chunks WHERE source=? ORDER BY id",
+            (source,),
+        ).fetchall()
+    return [{"id": r["id"], "content": r["content"]} for r in rows]
+
+
+def get_chunk_index(source, content):
+    """按（文件名, 块原文）返回 1-based 块序号；找不到返回 None。"""
+    with conn() as c:
+        row = c.execute(
+            "SELECT (SELECT COUNT(*) FROM chunks c2"
+            " WHERE c2.source = c.source AND c2.id <= c.id)"
+            " FROM chunks c WHERE c.source=? AND c.content=? LIMIT 1",
+            (source, content),
+        ).fetchone()
+    return int(row[0]) if row and row[0] is not None else None
+

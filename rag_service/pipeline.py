@@ -10,7 +10,9 @@ llm.invoke 一次性返回，拿不到流；本服务要走 llm.astream，只能
 
 import asyncio
 import os
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import rag_baseline
 from dotenv import load_dotenv
@@ -26,6 +28,9 @@ from rag_service.prompts import REWRITE_PROMPT, build_generate_prompt, make_snip
 _LEAK_WORDS = ("改写后", "输出：", "回答：")
 
 _REQUIRED_ENV = ("LLM_MODEL", "LLM_API_KEY", "LLM_BASE_URL")
+
+_SOURCE_RE = re.compile(r"^q\d+\.md$")
+_CORPUS_DIR = Path(rag_baseline.SRC_DIR)
 
 
 @dataclass
@@ -98,6 +103,46 @@ def sync_corpus_chunks(vector_db):
     return len(rows)
 
 
+def _locate_chunk_offsets(cleaned_text, rows):
+    """按块顺序在清洗后文本中定位字符区间，返回前端定位所需结构。"""
+    chunks = []
+    cursor = 0
+    for index, row in enumerate(rows, 1):
+        content = row["content"]
+        start = cleaned_text.find(content, cursor)
+        if start < 0:
+            start = cleaned_text.find(content)
+        if start < 0:
+            start = min(cursor, len(cleaned_text))
+        end = min(len(cleaned_text), start + len(content))
+        chunks.append({
+            "index": index,
+            "content": content,
+            "start_char": start,
+            "end_char": end,
+        })
+        cursor = start + 1
+    return chunks
+
+
+def document_chunks(source):
+    """按文档名返回块表；非法名抛 ValueError，文件不存在返回 None。"""
+    if not _SOURCE_RE.fullmatch(source):
+        raise ValueError(f"非法文档名: {source}")
+    path = _CORPUS_DIR / source
+    if not path.is_file():
+        return None
+
+    rows = store.list_chunks(source)
+    cleaned_text = rag_baseline.clean_md(path.read_text(encoding="utf-8").strip())
+    return {
+        "source": source,
+        "exists": True,
+        "total": len(rows),
+        "chunks": _locate_chunk_offsets(cleaned_text, rows),
+    }
+
+
 def warm_up_reranker():
     """把精排模型先加载好（懒加载单例，第一次调用要读 400MB 权重）。
 
@@ -155,6 +200,9 @@ def build_sources(hits):
             "source": doc.metadata["source"],
             "score": round(float(score), 2),
             "snippet": make_snippet(doc.page_content),
+            "chunk_index": store.get_chunk_index(
+                doc.metadata["source"], doc.page_content
+            ),
         }
         for rank, (doc, score) in enumerate(hits, 1)
     ]

@@ -21,7 +21,8 @@ from rag_service.config import (DEFAULT_CONVERSATION_NAME, EVENT_DONE, EVENT_ERR
                                 QUESTION_MAX_CHARS, SKIP_RERANK_WARMUP)
 from rag_service.prompts import build_history_text
 from rag_service.schemas import (AnswerIn, ConversationIn, ConversationListOut,
-                                 ConversationOut, HealthOut, HistoryOut, MessageOut)
+                                 ConversationOut, DocumentChunksOut, HealthOut,
+                                 HistoryOut, MessageOut)
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -214,3 +215,17 @@ def get_conversation_messages(conversation_id: int) -> HistoryOut:
         conversation_id=conversation_id,
         messages=[MessageOut(**m) for m in messages],
     )
+
+
+@app.get("/api/docs/{source}/chunks", response_model=DocumentChunksOut)
+def get_document_chunks(source: str) -> DocumentChunksOut:
+    """返回一个语料文档的块表，供来源卡片跳转到命中区域。"""
+    _require_ready()
+    try:
+        result = pipeline.document_chunks(source)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"文档不存在: {source}")
+    return DocumentChunksOut(**result)
+

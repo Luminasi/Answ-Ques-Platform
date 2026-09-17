@@ -41,6 +41,24 @@ class SourceOut(BaseModel):
     source: str
     score: float
     snippet: str
+    chunk_index: int | None = Field(
+        default=None,
+        description="命中块在该文档中的 1-based 序号；用于跳转到文档块",
+    )
+
+
+class ChunkOut(BaseModel):
+    index: int
+    content: str
+    start_char: int
+    end_char: int
+
+
+class DocumentChunksOut(BaseModel):
+    source: str
+    exists: bool
+    total: int
+    chunks: list[ChunkOut]
 
 
 class MessageOut(BaseModel):

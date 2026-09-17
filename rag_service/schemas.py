@@ -16,6 +16,9 @@ class AnswerIn(BaseModel):
     conversation_id: int | None = Field(
         default=None, ge=1, description="会话 id；省略即单轮模式（不带上下文、不落库）"
     )
+    stream: bool = Field(
+        default=True, description="true=SSE 流式（默认）；false=一次返回纯答案 JSON"
+    )
 
 
 class ConversationIn(BaseModel):

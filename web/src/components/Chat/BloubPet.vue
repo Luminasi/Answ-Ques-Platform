@@ -1,22 +1,23 @@
 <script setup>
-// 精简版 bloub 桌宠（引擎来自 github.com/jeremy-prt/bloub，MIT License）
-// 只保留：默认动作循环播放 + 视线跟随鼠标。去掉了原项目的 i18n / 时间轴编辑依赖。
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, triggerRef } from 'vue'
+// 全局常驻吉祥物的动画内核。
+// 引擎来自 github.com/jeremy-prt/bloub（MIT License），这里只保留：
+// 状态受外部驱动 + 动态形态/颜色/表情 + 平滑视线跟随。
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, triggerRef, watch } from 'vue'
 import { NOTIF_BLUE } from '../../bot/decor'
 import { BotEngine } from '../../bot/engine'
-import { clamp, easings } from '../../bot/math'
+import { clamp } from '../../bot/math'
 import { EXPRESSION_BY_ID, DEFAULT_EXPRESSION } from '../../bot/expressions'
 import { COLOR_BY_ID, SHAPE_BY_ID, DEFAULT_COLOR, DEFAULT_SHAPE, mixHex } from '../../bot/skins'
-import { blockAt, defaultCycle } from '../../bot/cycles'
 import { DEMI_VIEWBOX, RAYON } from '../../bot/repere'
 
 const props = defineProps({
   size: { type: Number, default: 120 },
+  state: { type: String, default: 'idle' },
   shape: { type: String, default: DEFAULT_SHAPE },
   color: { type: String, default: DEFAULT_COLOR },
   expression: { type: String, default: DEFAULT_EXPRESSION },
-  // 眼睛是身体上的「洞」，透出这个底色；应接近宠物身后的背景色
-  paper: { type: String, default: '#16202e' },
+  // 眼睛是身体上的「洞」，透出这个底色；浅色页面下保持深色瞳孔。
+  paper: { type: String, default: '#223044' },
   follow: { type: Boolean, default: true },
 })
 
@@ -27,8 +28,7 @@ const shapeRadii = computed(() => SHAPE_BY_ID.get(props.shape)?.radii ?? null)
 const ink = computed(() => COLOR_BY_ID.get(props.color)?.hex ?? '#0a0a0c')
 const expression = computed(() => EXPRESSION_BY_ID.get(props.expression) ?? null)
 
-const cycle = defaultCycle().blocks
-const engine = new BotEngine(R, cycle[0]?.state ?? 'idle', shapeRadii.value, expression.value)
+const engine = new BotEngine(R, props.state, shapeRadii.value, expression.value)
 const frame = shallowRef(engine.sample(0))
 const uid = Math.random().toString(36).slice(2, 8)
 const maskId = `pet-mask-${uid}`
@@ -36,22 +36,26 @@ const maskId = `pet-mask-${uid}`
 let raf = 0
 let clock = 0
 let last = 0
-let curBlock = -1
+
+// ---- 外部驱动状态、形态与表情，平滑过渡 ----
+watch(shapeRadii, (radii) => {
+  engine.setShape(radii, clock)
+})
+watch(expression, (expr) => {
+  engine.setExpression(expr, clock)
+})
+watch(
+  () => props.state,
+  (state) => {
+    if (state !== engine.state) engine.setState(state, clock)
+  }
+)
 
 function tick(nowMs) {
   const now = nowMs / 1000
   if (!last) last = now
-  clock += Math.min(now - last, 0.1) // 页面切走再回来时不跳帧
+  clock += Math.min(now - last, 0.1)
   last = now
-
-  // 按默认循环推进状态块
-  const { index } = blockAt(cycle, clock % totalDuration(cycle))
-  if (index !== curBlock) {
-    const b = cycle[index]
-    if (curBlock === -1 || index < curBlock) engine.reset(b.state, clock)
-    else engine.setState(b.state, clock)
-    curBlock = index
-  }
 
   aim()
   frame.value = engine.sample(clock)
@@ -59,41 +63,52 @@ function tick(nowMs) {
   raf = requestAnimationFrame(tick)
 }
 
-function totalDuration(blocks) {
-  return blocks.reduce((s, b) => s + b.duration, 0)
-}
-
-/* ---- 视线跟随（简化自原项目 gaze 逻辑） ---- */
+/* ---- 平滑视线跟随 ----
+ * 与旧实现不同：不再拿整个窗口半径做灵敏度，而是以宠物自身为圆心，
+ * 在小范围内达到最大偏角。这样鼠标靠近时眼睛立即有反应，远处也不越界。
+ */
 const svg = ref(null)
 let pointer = null
-let aiming = false
-let turnSince = 0
-const TURN_TIME = 0.7
+
+const YAW_MAX = 18
+const PITCH_BASE = 8
+const PITCH_MAX = 14
+const GAZE_RADIUS_X = 220
+const GAZE_RADIUS_Y = 170
+const LOOK_MORPH = 0.12
 
 function onPointerMove(e) {
   if (e.pointerType === 'touch') return
   pointer = { x: e.clientX, y: e.clientY }
 }
 function onPointerLeave() { pointer = null }
+function onWindowBlur() { pointer = null }
 
 function aim() {
-  if (!props.follow) return
+  if (!props.follow) {
+    engine.setLook(null, clock)
+    return
+  }
   const box = svg.value?.getBoundingClientRect()
-  if (!box || box.width === 0) return
-  if (!aiming) turnSince = clock
-  const halfW = Math.max(1, window.innerWidth / 2)
-  const halfH = Math.max(1, window.innerHeight / 2)
+  if (!box || box.width === 0 || !pointer) {
+    engine.setLook(null, clock)
+    return
+  }
+  const cx = box.left + box.width / 2
+  const cy = box.top + box.height / 2
+  const nx = clamp((pointer.x - cx) / GAZE_RADIUS_X, -1, 1)
+  const ny = clamp((pointer.y - cy) / GAZE_RADIUS_Y, -1, 1)
   engine.setLook(
     {
-      yaw: pointer ? clamp(((pointer.x - (box.left + box.width / 2)) / halfW) * 40, -40, 40) : 0,
-      pitch: pointer ? clamp(((pointer.y - (box.top + box.height / 2)) / halfH) * 30, -30, 30) : 0,
-      mix: easings.easeOutQuint(clamp((clock - turnSince) / TURN_TIME)),
+      yaw: nx * YAW_MAX,
+      pitch: PITCH_BASE - ny * PITCH_MAX,
+      mix: 1,
       spin: 0,
-      wander: pointer ? 0 : 1,
+      wander: 0,
     },
-    clock
+    clock,
+    LOOK_MORPH
   )
-  aiming = true
 }
 
 function dotAttrs(dot) {
@@ -106,13 +121,16 @@ function dotAttrs(dot) {
 
 onMounted(() => {
   window.addEventListener('pointermove', onPointerMove, { passive: true })
-  window.addEventListener('pointerleave', onPointerLeave)
+  document.addEventListener('pointerleave', onPointerLeave)
+  window.addEventListener('blur', onWindowBlur)
   raf = requestAnimationFrame(tick)
 })
+
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
   window.removeEventListener('pointermove', onPointerMove)
-  window.removeEventListener('pointerleave', onPointerLeave)
+  document.removeEventListener('pointerleave', onPointerLeave)
+  window.removeEventListener('blur', onWindowBlur)
 })
 </script>
 
@@ -127,7 +145,6 @@ onBeforeUnmount(() => {
     class="bloub-pet"
   >
     <defs>
-      <!-- 眼睛是身体上挖出的洞，自动被轮廓裁切 -->
       <mask :id="maskId" maskUnits="userSpaceOnUse" :x="-VB" :y="-VB" :width="VB * 2" :height="VB * 2">
         <path :d="frame.bodyPath" fill="#fff" />
         <path v-for="(eye, i) in frame.eyes" :key="i" :d="eye.d" :transform="eye.matrix" :opacity="eye.alpha" fill="#000" />
@@ -144,12 +161,10 @@ onBeforeUnmount(() => {
       </linearGradient>
     </defs>
 
-    <!-- 轨道后半段：画在身体之前，被身体遮挡 -->
     <g fill="none" stroke-linecap="round">
       <path v-for="arc in frame.arcs" :key="`b${arc.id}`" :d="arc.back" :stroke="`url(#${uid}-${arc.id})`" :stroke-width="arc.width" :opacity="arc.opacity" />
     </g>
 
-    <!-- 爆裂粒子（身体后方） -->
     <g v-if="frame.dotsBehind">
       <component :is="dot.d ? 'path' : 'circle'" v-for="(dot, i) in frame.dots" :key="`pb${i}`" v-bind="dotAttrs(dot)" />
     </g>
@@ -161,14 +176,12 @@ onBeforeUnmount(() => {
       </g>
     </g>
 
-    <!-- 爆裂粒子（身体前方） -->
     <g v-if="!frame.dotsBehind">
       <component :is="dot.d ? 'path' : 'circle'" v-for="(dot, i) in frame.dots" :key="`pf${i}`" v-bind="dotAttrs(dot)" />
     </g>
 
     <circle v-if="frame.notif" :cx="frame.notif.x" :cy="frame.notif.y" :r="frame.notif.r" :fill="NOTIF_BLUE" />
 
-    <!-- 轨道前半段 -->
     <g fill="none" stroke-linecap="round">
       <path v-for="arc in frame.arcs" :key="`f${arc.id}`" :d="arc.front" :stroke="`url(#${uid}-${arc.id})`" :stroke-width="arc.width" :opacity="arc.opacity" />
     </g>

@@ -1,6 +1,7 @@
 <script setup>
 import { useDocsStore } from '../../stores/docs'
 import { useAppStore } from '../../stores/app'
+import { mascotPanel } from '../../stores/mascot'
 
 const props = defineProps({
   sources: { type: Array, default: () => [] }, // [{rank, source, score, snippet}]
@@ -9,10 +10,11 @@ const props = defineProps({
 const docs = useDocsStore()
 const app = useAppStore()
 
-function open(source) {
-  // 跳到第二屏并打开文档全文
+function open(source, chunkIndex = null) {
+  // 跳到第二屏并打开文档全文；从吉祥物面板点击时顺便收起面板
+  mascotPanel.open = false
   app.goTo(1)
-  docs.openDoc(source)
+  docs.openDoc(source, chunkIndex)
 }
 </script>
 
@@ -24,7 +26,7 @@ function open(source) {
         v-for="s in sources"
         :key="s.rank"
         class="source-card"
-        @click="open(s.source)"
+        @click="open(s.source, s.chunk_index)"
       >
         <span class="source-rank">#{{ s.rank }}</span>
         <span class="source-body">

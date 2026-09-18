@@ -6,6 +6,8 @@ import { useDocsStore } from './stores/docs'
 import { API } from './config'
 import ChatScreen from './views/ChatScreen.vue'
 import RingScreen from './views/RingScreen.vue'
+import BotLayer from './components/Bot/BotLayer.vue'
+import BotPanel from './components/Bot/BotPanel.vue'
 
 const app = useAppStore()
 const chat = useChatStore()
@@ -91,6 +93,12 @@ onBeforeUnmount(() => {
     <button :class="{ on: app.currentScreen === 0 }" @click="go(app.currentScreen === 1 ? -1 : 0)" aria-label="对话屏"></button>
     <button :class="{ on: app.currentScreen === 1 }" @click="go(app.currentScreen === 0 ? 1 : 0)" aria-label="文档环屏"></button>
   </nav>
+
+  <!-- 全局常驻吉祥物：独立于页面容器，页面切换时不随屏移动 -->
+  <BotLayer />
+
+  <!-- 吉祥物点击后半透明助手面板 -->
+  <BotPanel />
 
   <!-- 全局错误 Toast -->
   <div v-if="chat.error" class="toast" @click="chat.error = ''">{{ chat.error }}</div>

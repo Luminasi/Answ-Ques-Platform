@@ -115,7 +115,7 @@ const notes = useNotesStore()
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-bright);
   color: #1a1206;
   font-size: 0.7rem;
   font-weight: 700;

@@ -86,7 +86,15 @@ function saveNote(msg) {
 .history-loading { text-align: center; color: var(--text-faint); padding: 2rem; font-size: 0.86rem; }
 
 /* 消息气泡 */
-.msg-row { margin-bottom: 1.3rem; display: flex; }
+.msg-row {
+  margin-bottom: 1.3rem;
+  display: flex;
+  animation: msg-in 0.35s var(--ease-out);
+}
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
 .msg-row.user { justify-content: flex-end; }
 .msg-bubble { display: flex; gap: 0.7rem; max-width: 88%; }
 .msg-row.user .msg-bubble { flex-direction: row-reverse; }
@@ -101,7 +109,7 @@ function saveNote(msg) {
   font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 700;
-  color: #04121a;
+  color: #fff;
 }
 
 .msg-content { min-width: 0; }
@@ -170,5 +178,9 @@ function saveNote(msg) {
   font-size: 0.78rem;
   color: var(--text-faint);
   font-style: italic;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-row { animation: none; }
 }
 </style>

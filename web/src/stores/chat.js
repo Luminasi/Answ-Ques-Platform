@@ -18,6 +18,8 @@ export const useChatStore = defineStore('chat', {
     streaming: false,       // 是否有流式回答进行中
     error: '',              // 全局错误提示
     loadingHistory: false,
+    // 吉祥物需要区分：检索中 / 生成中 / 完成 / 失败
+    phase: 'idle',
   }),
 
   actions: {
@@ -45,6 +47,7 @@ export const useChatStore = defineStore('chat', {
     async selectConversation(id) {
       this.conversationId = id
       this.loadingHistory = true
+      this.phase = 'retrieving'
       this.messages = []
       try {
         const data = await request(API.messages(id))
@@ -60,6 +63,7 @@ export const useChatStore = defineStore('chat', {
         this.error = e.message
       } finally {
         this.loadingHistory = false
+        this.phase = 'idle'
       }
     },
 
@@ -85,6 +89,7 @@ export const useChatStore = defineStore('chat', {
       if (!q || this.streaming) return
       if (q.length > 500) {
         this.error = '问题不能超过 500 字'
+        this.phase = 'error'
         return
       }
       this.error = ''
@@ -106,6 +111,7 @@ export const useChatStore = defineStore('chat', {
       })
       this.messages.push(aiMsg)
       this.streaming = true
+      this.phase = 'retrieving'
 
       await streamAnswer(q, this.conversationId, {
         onMeta: (meta) => {
@@ -119,6 +125,7 @@ export const useChatStore = defineStore('chat', {
         onDelta: (delta) => {
           aiMsg.thinking = false
           aiMsg.content += delta // delta 必须累加，不能覆盖
+          this.phase = 'generating'
         },
         onSources: (sources) => {
           // 过滤低相关来源；全部被滤掉时 citations 为空，
@@ -130,6 +137,7 @@ export const useChatStore = defineStore('chat', {
           aiMsg.thinking = false   // 兜底：流结束但无内容时也要关掉思考态
           aiMsg.id = done.assistant_message_id ?? aiMsg.id
           this.streaming = false
+          this.phase = 'done'
           this.fetchConversations() // 刷新侧边栏顺序
         },
         onError: (err) => {
@@ -138,6 +146,7 @@ export const useChatStore = defineStore('chat', {
           aiMsg.error = err.message || '回答生成失败'
           if (!aiMsg.content) aiMsg.content = ''
           this.streaming = false
+          this.phase = 'error'
         },
       })
     },

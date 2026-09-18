@@ -160,6 +160,7 @@ export type StateId =
   | 'hexagon'
   | 'play'
   | 'orbit'
+  | 'searching'
   | 'burst'
   | 'comet'
   /** transition d'interface, pas une animation du catalogue : hors `SEQUENCE` */
@@ -524,6 +525,29 @@ export const STATES: StateDef[] = [
   },
 
   {
+    id: 'searching',
+    duration: 2.0,
+    morph: 0.4,
+    baseFace: false,
+    baseBody: true,
+    blinkIn: false,
+    pose: (t) =>
+      base({
+        sil: circle(1),
+        gaze: { yaw: 0, pitch: 4, roll: -8 },
+        split: EYE_SPLIT,
+        eyes: pair(0.2, 0.38),
+        // 持续环绕的轨道，速度压到约 1.2 圈/秒，避免检索动画过躁。
+        arcs: RINGS.slice(0, 4).map((s, i) => ({
+          id: `search${i}`,
+          seed: { ...s, speed: s.speed * 0.38, sweep: 0.82 },
+          t,
+          opacity: 0.82
+        }))
+      })
+  },
+
+  {
     id: 'burst',
     duration: 2.6,
     // le corps est recompose a 1.7 + 0.7
@@ -593,6 +617,7 @@ export const POSES: Record<StateId, number> = {
   hexagon: 0.8,
   play: 0.9,
   orbit: 1.2,
+  searching: 0.8,
   swirl: 0.5,
   burst: 0.45,
   comet: 1.15

@@ -4,7 +4,7 @@ import { useDocsStore, DOMAIN_META } from '../../stores/docs'
 
 const docs = useDocsStore()
 
-const meta = computed(() => DOMAIN_META[docs.activeDomain] || { zh: docs.activeDomain, color: '#94a3b8' })
+const meta = computed(() => DOMAIN_META[docs.activeDomain] || { zh: docs.activeDomain, color: '#475569' })
 
 function openDoc(source) {
   docs.openDoc(source)

@@ -70,6 +70,11 @@ function onSelect(domain) {
   pointer-events: none;
   position: relative;
   z-index: 5;
+  animation: head-in 0.55s var(--ease-out);
+}
+@keyframes head-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
 }
 .ring-title {
   font-family: var(--font-display);
@@ -81,5 +86,9 @@ function onSelect(domain) {
   margin-top: 0.5rem;
   color: var(--text-dim);
   font-size: clamp(0.82rem, 1.3vw, 0.95rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-head { animation: none; }
 }
 </style>

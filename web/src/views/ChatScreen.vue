@@ -1,12 +1,12 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useAppStore } from '../stores/app'
 import { useChatStore } from '../stores/chat'
 import Sidebar from '../components/Chat/Sidebar.vue'
 import MessageList from '../components/Chat/MessageList.vue'
 import InputBox from '../components/Chat/InputBox.vue'
 import NotesDrawer from '../components/Chat/NotesDrawer.vue'
-import BloubPet from '../components/Chat/BloubPet.vue'
+import { bindMascotAnchor, unbindMascotAnchor } from '../stores/mascot'
 // 背景图备用：恢复时取消模板中 bg-img 注释即可
 // import lakeDusk from '../assets/bg/lake-dusk.jpg'
 
@@ -15,6 +15,17 @@ const chat = useChatStore()
 
 // 空态 = 当前会话没有消息且不在加载历史：输入框居中
 const isEmpty = computed(() => chat.messages.length === 0 && !chat.loadingHistory)
+
+// 欢迎区占位锚点：真正的吉祥物已上移到全局 BotLayer，
+// 这里只负责告诉它「中央欢迎位」此刻在哪里。
+const anchorEl = ref(null)
+function syncAnchor() {
+  if (isEmpty.value && anchorEl.value) bindMascotAnchor(anchorEl.value)
+  else unbindMascotAnchor()
+}
+watch(isEmpty, () => nextTick(syncAnchor))
+onMounted(() => nextTick(syncAnchor))
+onBeforeUnmount(unbindMascotAnchor)
 </script>
 
 <template>
@@ -49,7 +60,7 @@ const isEmpty = computed(() => chat.messages.length === 0 && !chat.loadingHistor
         <div v-if="isEmpty" class="empty-stage">
           <div class="empty-inner">
             <div class="empty-mark">
-              <BloubPet :size="110" color="orange" paper="#223044" />
+              <div ref="anchorEl" class="mascot-anchor" data-mascot-anchor aria-hidden="true"></div>
             </div>
             <h2 class="empty-title">你好，让我们开始聊天吧</h2>
             <p class="empty-sub">基于 534 篇 Python 课程问答语料，支持多轮上下文对话</p>
@@ -125,7 +136,7 @@ const isEmpty = computed(() => chat.messages.length === 0 && !chat.loadingHistor
 .brand-mark {
   width: 32px; height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #fbbf24);
+  background: linear-gradient(135deg, var(--accent-bright), #fbbf24);
   display: grid;
   place-items: center;
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
@@ -190,6 +201,7 @@ const isEmpty = computed(() => chat.messages.length === 0 && !chat.loadingHistor
   text-align: center;
 }
 .empty-mark { margin-bottom: 1.1rem; opacity: 0.9; }
+.mascot-anchor { width: 110px; height: 110px; pointer-events: none; }
 .empty-title {
   font-family: var(--font-display);
   font-size: clamp(1.4rem, 3vw, 1.9rem);

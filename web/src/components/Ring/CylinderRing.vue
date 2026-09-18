@@ -14,9 +14,11 @@ const N = computed(() => props.domains.length)
 const step = computed(() => 360 / N.value)
 
 // 相机视角：观察者位于圆柱中心，卡片环绕四周、面朝观察者
+// 尊重系统减弱动效设置：reduced-motion 时关闭自动慢转（拖拽仍可用手转）
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const IDLE = REDUCED ? 0 : 0.045
 let angle = 0
-let velocity = 0.045   // 自动慢转速度
-const IDLE = 0.045
+let velocity = IDLE   // 自动慢转速度
 let dragging = false
 let lastX = 0
 let moved = 0
@@ -148,6 +150,12 @@ onBeforeUnmount(() => {
   touch-action: pan-y;
   user-select: none;
   overflow: hidden;
+  /* 只动透明度：transform 由 JS 每帧驱动，CSS 动画不能碰 */
+  animation: stage-in 0.7s var(--ease-out);
+}
+@keyframes stage-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .stage.dragging { cursor: grabbing; }
 

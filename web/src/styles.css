@@ -1,0 +1,235 @@
+/* ============================================================
+   课程答疑平台 - 全局样式
+   景色风：黄昏山湖（暖橙霞光 + 湖蓝倒影）× 草原云海（青绿 + 云白）
+   ============================================================ */
+
+:root {
+  /* 背景基底（浅色主题） */
+  --bg-deep: #ffffff;
+  --bg-panel: rgba(255, 255, 255, 0.78);
+  --bg-soft: rgba(16, 28, 44, 0.05);
+  --bg-strong: rgba(16, 28, 44, 0.09);
+
+  /* 文字 */
+  --text: #1c2733;
+  --text-dim: rgba(28, 39, 51, 0.66);
+  --text-faint: rgba(28, 39, 51, 0.42);
+
+  /* 强调色（唯一主强调：暖橙，白底下加深一档保证可读） */
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.12);
+  --lake: #0284c7;             /* 湖蓝：链接 / AI 身份，白底下加深 */
+  --lake-soft: rgba(2, 132, 199, 0.1);
+
+  /* 材质 */
+  --line: rgba(16, 28, 44, 0.12);
+  --line-strong: rgba(16, 28, 44, 0.22);
+
+  /* 圆角体系：卡片 12px，按钮全圆角 */
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  /* 字体 */
+  --font-display: "Outfit", "Noto Serif SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-body: "Outfit", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #app { height: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+img { display: block; max-width: 100%; }
+
+::selection { background: rgba(245, 158, 11, 0.35); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.24); }
+
+/* ---------- 通用按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.62rem 1.35rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  transition: transform 0.2s var(--ease-out), background 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.btn:active { transform: translateY(1px) scale(0.98); }
+
+.btn-primary {
+  background: linear-gradient(120deg, var(--accent), #ea7c1f);
+  color: #1a1206;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.3);
+}
+.btn-primary:hover { box-shadow: 0 8px 32px rgba(245, 158, 11, 0.45); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: var(--bg-soft);
+  border-color: var(--line);
+  color: var(--text);
+  backdrop-filter: blur(10px);
+}
+.btn-ghost:hover { background: var(--bg-strong); border-color: var(--line-strong); }
+
+/* ---------- 玻璃面板 ---------- */
+.glass {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* ---------- 健康指示灯 ---------- */
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #f87171;
+  display: inline-block;
+}
+.dot.on { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.7); }
+
+/* ---------- Markdown 渲染 ---------- */
+.md { font-size: 0.94rem; }
+.md h1, .md h2, .md h3, .md h4 {
+  font-family: var(--font-display);
+  margin: 1.1em 0 0.5em;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.md h1 { font-size: 1.45rem; }
+.md h2 { font-size: 1.25rem; }
+.md h3 { font-size: 1.1rem; }
+.md p { margin: 0.55em 0; }
+.md ul, .md ol { margin: 0.5em 0; padding-left: 1.4em; }
+.md li { margin: 0.25em 0; }
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: rgba(2, 132, 199, 0.1);
+  color: #0369a1;
+  padding: 0.15em 0.45em;
+  border-radius: 6px;
+}
+.md pre {
+  background: rgba(6, 12, 22, 0.85);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+.md pre code {
+  background: none;
+  color: #d6e4f0;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.md blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.3em 0 0.3em 1em;
+  margin: 0.8em 0;
+  color: var(--text-dim);
+  background: var(--accent-soft);
+  border-radius: 0 8px 8px 0;
+}
+.md table { border-collapse: collapse; margin: 0.8em 0; width: 100%; }
+.md th, .md td { border: 1px solid var(--line); padding: 0.45em 0.8em; font-size: 0.9em; }
+.md th { background: var(--bg-soft); font-family: var(--font-display); }
+.md strong { color: var(--text); font-weight: 600; }
+.md hr { border: none; border-top: 1px solid var(--line); margin: 1.2em 0; }
+
+/* ---------- 两屏容器 ---------- */
+.screens {
+  height: 200vh;
+  transition: transform 0.85s var(--ease-out);
+  will-change: transform;
+}
+.screen {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ---------- 屏幕指示器 ---------- */
+.screen-dots {
+  position: fixed;
+  right: 1.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.screen-dots button {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  padding: 0;
+  transition: all 0.3s var(--ease-out);
+}
+.screen-dots button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.35);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  top: 1.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  padding: 0.7rem 1.3rem;
+  border-radius: var(--radius-pill);
+  background: rgba(30, 22, 14, 0.92);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #ffd9a0;
+  font-size: 0.86rem;
+  backdrop-filter: blur(12px);
+  animation: toast-in 0.3s var(--ease-out);
+  pointer-events: none;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ---------- 滚动浮现 ---------- */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out); }
+.reveal.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screens { transition: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .toast { animation: none; }
+}

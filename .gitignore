@@ -26,6 +26,10 @@ knowledge/chat_history.db
 knowledge/chat_history.db-wal
 knowledge/chat_history.db-shm
 
+# ── 前端 ──
+node_modules/
+web/dist/
+
 # ── 课程报告等私人工作文件 ──
 .report_work/
 

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bespoke Architecture Studio</title>
+<meta name="description" content="Bespoke Architecture Studio — the building you deserve has never been built before.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf9f7;
+    --ink: #171512;
+    --ink-dim: rgba(23, 21, 18, 0.62);
+    --line: rgba(23, 21, 18, 0.12);
+    --radius-card: 14px;
+    --font: "Inter", system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem clamp(1.2rem, 4vw, 2.6rem);
+  }
+  .logo {
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+  }
+  .menu-btn {
+    width: 40px; height: 40px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    gap: 0;
+  }
+  .menu-btn span {
+    display: block;
+    width: 22px; height: 2px;
+    background: var(--ink);
+    margin: 3px 0;
+    border-radius: 2px;
+  }
+  .btn-pill {
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .btn-pill:hover { transform: translateY(-1px); opacity: 0.88; }
+
+  /* ---------- Headline ---------- */
+  .headline {
+    text-align: center;
+    padding: clamp(0.5rem, 3vh, 2rem) 1rem 0;
+    user-select: none;
+  }
+  .headline h1 {
+    font-size: clamp(2.4rem, 6vw, 4.6rem);
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+  }
+  .headline p {
+    margin-top: 1rem;
+    color: var(--ink-dim);
+    font-size: clamp(0.9rem, 1.4vw, 1.02rem);
+    font-weight: 500;
+  }
+
+  /* ---------- Cylinder stage ---------- */
+  .stage {
+    flex: 1;
+    position: relative;
+    display: grid;
+    place-items: center;
+    perspective: 1400px;
+    perspective-origin: 50% 42%;
+    cursor: grab;
+    touch-action: pan-y;
+    min-height: 0;
+  }
+  .stage.dragging { cursor: grabbing; }
+
+  .ring {
+    position: relative;
+    transform-style: preserve-3d;
+    /* card sizing */
+    --card-w: clamp(170px, 23vw, 280px);
+    --card-h: calc(var(--card-w) * 1.32);
+    width: var(--card-w);
+    height: var(--card-h);
+  }
+  .card {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: 0 18px 45px rgba(23, 21, 18, 0.16);
+    backface-visibility: hidden;
+    background: #e8e4de;
+  }
+  .card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+  .card .label {
+    position: absolute;
+    left: 0.7rem;
+    bottom: 0.7rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(23, 21, 18, 0.55);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .card.front .label { opacity: 1; }
+
+  /* grab-hand hint */
+  .grab-hint {
+    position: absolute;
+    z-index: 10;
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(23, 21, 18, 0.22);
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .grab-hint.hide { opacity: 0; transform: scale(0.6); }
+  .grab-hint svg { width: 34px; height: 34px; }
+
+  /* soft floor shadow under the ring */
+  .stage::after {
+    content: "";
+    position: absolute;
+    bottom: 6%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 62%;
+    height: 60px;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(23,21,18,0.14), transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ---------- Bottom copy ---------- */
+  .bottom {
+    text-align: center;
+    padding: 0 1.5rem clamp(1.4rem, 4vh, 2.6rem);
+    user-select: none;
+  }
+  .bottom p {
+    max-width: 34rem;
+    margin: 0 auto 1.3rem;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+    line-height: 1.55;
+  }
+  .bottom .links {
+    display: flex;
+    justify-content: center;
+    gap: 1.6rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .bottom .links a {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 2px;
+    transition: opacity 0.2s ease;
+  }
+  .bottom .links a:hover { opacity: 0.55; }
+
+  @media (max-width: 640px) {
+    .btn-pill { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .grab-hint, .card .label { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <a class="logo" href="#">Bespoke<sup style="font-size:0.6em;">®</sup></a>
+  <button class="menu-btn" aria-label="Menu"><span></span><span></span></button>
+  <a class="btn-pill" href="#">Book a meeting</a>
+</header>
+
+<!-- ============ HEADLINE ============ -->
+<div class="headline">
+  <h1>Bespoke<br>Architecture<br>Studio</h1>
+  <p>The building you deserve has never been built before.</p>
+</div>
+
+<!-- ============ CYLINDER STAGE ============ -->
+<main class="stage" id="stage" aria-label="Interactive project carousel. Drag to rotate.">
+  <div class="ring" id="ring"></div>
+  <div class="grab-hint" id="grabHint" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#171512" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-4.5a1.5 1.5 0 0 1 3 0V11m0-3.5a1.5 1.5 0 0 1 3 0V13m0-2a1.5 1.5 0 0 1 3 0v3a6 6 0 0 1-6 6h-1.6a6 6 0 0 1-4.9-2.5L4.6 13.7a1.6 1.6 0 0 1 2.5-2L8 12.6"/>
+    </svg>
+  </div>
+</main>
+
+<!-- ============ BOTTOM ============ -->
+<footer class="bottom">
+  <p>We design private residences and commercial spaces from a blank page. No templates, no repeated floorplans, no shortcuts.</p>
+  <div class="links">
+    <a href="#">Book a meeting</a>
+    <a href="#">See Projects</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const IMG = (prompt) =>
+    "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
+    encodeURIComponent(prompt) + "&image_size=portrait_4_3";
+
+  const projects = [
+    { name: "Atrium House",   img: IMG("warm minimalist living room with double height glass atrium, beige sofa, oak floor, indoor trees, soft daylight, architectural photography") },
+    { name: "Spiral Residence", img: IMG("elegant curved staircase in warm white plaster, olive tree in terracotta pot, mediterranean minimalism, architectural photography") },
+    { name: "Forest Pavilion", img: IMG("modern glass house interior opening to pine forest, steel frame windows, fireplace, warm neutral tones, architectural photography") },
+    { name: "Courtyard Garden", img: IMG("lush private courtyard garden with lawn, hanging rattan chair, stone pavers, dappled sunlight, landscape architecture photography") },
+    { name: "Linen Bedroom",   img: IMG("serene bedroom with linen bedding, arched niches, paper pendant lamp, cream and beige palette, architectural interior photography") },
+    { name: "Gallery Loft",    img: IMG("dark moody living room with charcoal sofa, built in shelving, large abstract painting, spotlighting, architectural photography") },
+    { name: "Stone Terrace",   img: IMG("outdoor stone terrace with lounge furniture and olive trees at golden hour, warm mediterranean architecture photography") },
+    { name: "Oak Kitchen",     img: IMG("minimal oak and travertine kitchen with island, soft morning light, warm neutral tones, architectural interior photography") },
+    { name: "Bath Retreat",    img: IMG("spa like bathroom with freestanding stone tub, skylight, micro cement walls, warm minimalism, architectural photography") },
+    { name: "Reading Nook",    img: IMG("cozy reading corner with arched window, boucle armchair, floor to ceiling bookshelf, warm afternoon light, architectural photography") },
+  ];
+
+  const ring = document.getElementById("ring");
+  const stage = document.getElementById("stage");
+  const hint = document.getElementById("grabHint");
+
+  const N = projects.length;
+  const step = 360 / N;
+
+  // Compute radius so cards almost touch, with slight gap.
+  // Cards use translateZ(-r): their faces point INWARD toward the center,
+  // so the viewer stands INSIDE the cylinder and looks OUT.
+  function layout() {
+    const cardW = ring.offsetWidth; // layout width, unaffected by the current rotateY transform
+    const radius = (cardW / 2) / Math.tan(Math.PI / N) + cardW * 0.14;
+    cards.forEach((c, i) => {
+      c.style.transform = `rotateY(${i * step}deg) translateZ(${-radius}px)`;
+    });
+  }
+
+  // Build cards
+  const cards = projects.map((p) => {
+    const el = document.createElement("figure");
+    el.className = "card";
+    el.innerHTML = `<img src="${p.img}" alt="${p.name}" loading="eager"><figcaption class="label">${p.name}</figcaption>`;
+    ring.appendChild(el);
+    return el;
+  });
+
+  layout();
+  window.addEventListener("resize", layout);
+
+  // ---- Rotation state ----
+  // Inside view: increasing angle pans the scene to the LEFT (like turning your head right).
+  // Dragging grabs the world, so the scene follows the pointer.
+  let angle = 0;
+  let velocity = -0.06;         // idle auto-rotate speed (deg/frame)
+  const IDLE = -0.06;
+  let dragging = false;
+  let lastX = 0;
+  let interacted = false;
+
+  function frame() {
+    if (!dragging) {
+      angle += velocity;
+      // ease velocity back toward idle drift
+      velocity += (IDLE - velocity) * 0.02;
+    }
+    ring.style.transform = `rotateY(${angle}deg)`;
+    markFrontCard();
+    requestAnimationFrame(frame);
+  }
+
+  // Highlight the card facing the viewer
+  function markFrontCard() {
+    const norm = ((-angle % 360) + 360) % 360;
+    const idx = Math.round(norm / step) % N;
+    cards.forEach((c, i) => c.classList.toggle("front", i === idx));
+  }
+
+  // ---- Drag interaction (pointer events: mouse + touch) ----
+  function onDown(x) {
+    dragging = true;
+    lastX = x;
+    stage.classList.add("dragging");
+    if (!interacted) {
+      interacted = true;
+      hint.classList.add("hide");
+    }
+  }
+  function onMove(x) {
+    if (!dragging) return;
+    const dx = x - lastX;
+    lastX = x;
+    angle -= dx * 0.25;   // inside view: scene follows the pointer (grab the world and turn)
+    velocity = -dx * 0.25; // carry momentum into release
+  }
+  function onUp() {
+    dragging = false;
+    stage.classList.remove("dragging");
+  }
+
+  stage.addEventListener("pointerdown", (e) => {
+    stage.setPointerCapture(e.pointerId);
+    onDown(e.clientX);
+  });
+  stage.addEventListener("pointermove", (e) => onMove(e.clientX));
+  stage.addEventListener("pointerup", onUp);
+  stage.addEventListener("pointercancel", onUp);
+
+  // Keyboard support
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft")  { velocity = -2.2; if (!interacted) { interacted = true; hint.classList.add("hide"); } }
+    if (e.key === "ArrowRight") { velocity =  2.2; if (!interacted) { interacted = true; hint.classList.add("hide"); } }
+  });
+
+  // Position the grab hint over the right-ish front card
+  function placeHint() {
+    const r = stage.getBoundingClientRect();
+    hint.style.left = (r.width * 0.62 - 42) + "px";
+    hint.style.top = (r.height * 0.52 - 42) + "px";
+  }
+  placeHint();
+  window.addEventListener("resize", placeHint);
+
+  // Auto-hide hint after a while even without interaction
+  setTimeout(() => hint.classList.add("hide"), 6000);
+
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

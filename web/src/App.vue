@@ -14,6 +14,7 @@ const chat = useChatStore()
 const docs = useDocsStore()
 
 const translate = computed(() => `translateY(-${app.currentScreen * 100}vh)`)
+const overlayOpen = computed(() => docs.explorerOpen || docs.readerOpen)
 
 // ---- 滚轮吸附切换 ----
 let locked = false
@@ -29,6 +30,7 @@ function go(dir) {
 
 function onWheel(e) {
   if (locked) return
+  if (docs.explorerOpen || docs.readerOpen) return
   // 若光标在可滚动容器内且该容器可继续滚动，则不切屏
   const el = e.target.closest('[data-scrollable]')
   if (el) {
@@ -43,6 +45,7 @@ function onWheel(e) {
 function onTouchStart(e) { touchStartY = e.touches[0].clientY }
 function onTouchEnd(e) {
   if (locked) return
+  if (docs.explorerOpen || docs.readerOpen) return
   const dy = touchStartY - e.changedTouches[0].clientY
   const el = e.target.closest('[data-scrollable]')
   if (el && el.scrollHeight > el.clientHeight) {
@@ -89,16 +92,16 @@ onBeforeUnmount(() => {
   </div>
 
   <!-- 屏幕指示器 -->
-  <nav class="screen-dots" aria-label="屏幕切换">
+  <nav v-if="!overlayOpen" class="screen-dots" aria-label="屏幕切换">
     <button :class="{ on: app.currentScreen === 0 }" @click="go(app.currentScreen === 1 ? -1 : 0)" aria-label="对话屏"></button>
     <button :class="{ on: app.currentScreen === 1 }" @click="go(app.currentScreen === 0 ? 1 : 0)" aria-label="文档环屏"></button>
   </nav>
 
   <!-- 全局常驻吉祥物：独立于页面容器，页面切换时不随屏移动 -->
-  <BotLayer />
+  <BotLayer v-if="!docs.readerOpen" />
 
   <!-- 吉祥物点击后半透明助手面板 -->
-  <BotPanel />
+  <BotPanel v-if="!docs.readerOpen" />
 
   <!-- 全局错误 Toast -->
   <div v-if="chat.error" class="toast" @click="chat.error = ''">{{ chat.error }}</div>

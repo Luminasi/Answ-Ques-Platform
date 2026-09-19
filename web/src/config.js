@@ -2,6 +2,7 @@
 export const API = {
   // 文档服务（8000）
   docsList: () => '/api/docs',
+  docsTitles: () => '/api/docs-titles',
   doc: (source) => `/api/docs/${source}`,
   docsHealth: () => '/api/health',
   // RAG 服务（8001）

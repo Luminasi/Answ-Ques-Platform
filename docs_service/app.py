@@ -39,6 +39,12 @@ class HealthOut(BaseModel):
     status: str
 
 
+class DocTitlesOut(BaseModel):
+    """批量标题响应：source -> 标题（知识点代表标题）。"""
+
+    titles: dict[str, str]
+
+
 app = FastAPI(
     title="docs_service —— 文档阅读服务",
     description="按文件名读取语料全文，供前端阅读 RAG 引用文章。与 rag_baseline 完全隔离。",
@@ -48,7 +54,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -64,6 +70,12 @@ def list_docs() -> DocListOut:
     """返回语料文件列表。"""
     files = reader.list_doc_files()
     return DocListOut(total=len(files), files=files)
+
+
+@app.post("/api/docs-titles", response_model=DocTitlesOut)
+def get_docs_titles(sources: list[str]) -> DocTitlesOut:
+    """批量返回一组文档的标题（章节展示用，取代表性格点标题）。"""
+    return DocTitlesOut(titles=reader.read_docs_titles(sources))
 
 
 @app.get("/api/docs/{source}", response_model=DocOut)

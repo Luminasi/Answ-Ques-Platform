@@ -92,3 +92,19 @@ def list_doc_files() -> list[str]:
     ]
     # 按数字排序而非字典序：将来出现 q1000.md 时字典序会把它排到 q999.md 前面
     return sorted(names, key=lambda n: int(SOURCE_RE.match(n).group(1)))
+
+
+def read_docs_titles(sources: list[str]) -> dict[str, str]:
+    """批量读取一组文档的标题。单篇不存在/读取失败时跳过（章节展示是软依赖）。
+
+    标题即知识点代表标题（extract_title 取首个 '# ' 行），缺失时回退文件名。
+    """
+    out: dict[str, str] = {}
+    for source in sources:
+        try:
+            doc = read_doc(source)
+        except (ValueError, UnicodeError):
+            continue
+        if doc is not None:
+            out[source] = doc.title
+    return out

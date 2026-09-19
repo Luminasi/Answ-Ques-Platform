@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { useChatStore } from '../../stores/chat'
 import { useDocsStore, DOMAIN_META } from '../../stores/docs'
@@ -47,6 +47,14 @@ function isCurrent(source) {
 }
 
 const currentIndex = computed(() => latestSources.value.findIndex((s) => isCurrent(s)))
+
+// 从课程文档界面打开时，优先显示已保存的历史对话与继续提问入口。
+watch(
+  () => mascotPanel.open,
+  (open) => {
+    if (open && docs.explorerOpen) activeTab.value = 'chat'
+  }
+)
 
 function jump(source) {
   app.goTo(1)

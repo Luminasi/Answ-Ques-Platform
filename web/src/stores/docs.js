@@ -32,6 +32,15 @@ export const useDocsStore = defineStore('docs', {
     pendingChunkIndex: null,
     page: 1,
     pageSize: 24,
+    titlesBySource: {},       // { 'q001.md': 'Python是什么？' }
+    titleLoadingSources: [],  // 正在批量读取标题的文档，避免重复请求
+    titleError: '',
+    explorerOpen: false,      // 章节文档展示界面
+    explorerDomain: null,     // 当前章节
+    explorerNavOpen: true,    // 当前章节的文档列表是否展开
+    explorerDoc: null,        // 章节界面中正在阅读的完整文档
+    explorerDocLoading: false,
+    explorerDocError: '',
   }),
 
   getters: {
@@ -59,6 +68,45 @@ export const useDocsStore = defineStore('docs', {
     totalPages() {
       return Math.max(1, Math.ceil(this.activeTotal / this.pageSize))
     },
+    titleOf: (state) => (source) => (
+      state.titlesBySource[source] || source.replace(/\.md$/, '')
+    ),
+    // 首页章节卡：每个章节均匀抽 4 篇，标题由标题接口实时补全
+    chapterPreviews() {
+      return this.domains.map((domain) => {
+        const ids = domain.ids
+        const positions = [0, 1 / 3, 2 / 3, 1]
+        const pickedIds = []
+        positions.forEach((ratio) => {
+          const id = ids[Math.min(ids.length - 1, Math.round((ids.length - 1) * ratio))]
+          if (!pickedIds.includes(id)) pickedIds.push(id)
+        })
+        return {
+          ...domain,
+          items: pickedIds.map((id) => {
+            const source = `q${String(id).padStart(3, '0')}.md`
+            return { id, source, title: this.titlesBySource[source] || '' }
+          }),
+        }
+      })
+    },
+    explorerDocs() {
+      if (!this.explorerDomain) return []
+      const ids = this.domainIds[this.explorerDomain] || []
+      return ids.map((id) => {
+        const source = `q${String(id).padStart(3, '0')}.md`
+        return { id, source, title: this.titlesBySource[source] || '' }
+      })
+    },
+    // 长页面统计：全部从 domainIds 硬算，保证数字真实
+    stats() {
+      const counts = Object.values(this.domainIds).map((ids) => ids.length)
+      const domains = counts.length
+      const total = counts.reduce((s, n) => s + n, 0)
+      const maxDomainCount = counts.length ? Math.max(...counts) : 0
+      const avgPerDomain = domains ? Math.round(total / domains) : 0
+      return { domains, total, maxDomainCount, avgPerDomain }
+    },
   },
 
   actions: {
@@ -68,6 +116,41 @@ export const useDocsStore = defineStore('docs', {
         this.files = data.files || []
       } catch (e) {
         console.error('文档列表加载失败', e)
+      }
+    },
+
+    sourcesForDomain(key) {
+      return (this.domainIds[key] || []).map((id) => `q${String(id).padStart(3, '0')}.md`)
+    },
+
+    async ensureTitles(sources) {
+      const wanted = [...new Set(sources)].filter(Boolean)
+      const missing = wanted.filter(
+        (source) => !this.titlesBySource[source] && !this.titleLoadingSources.includes(source)
+      )
+      if (!missing.length) return
+
+      this.titleError = ''
+      this.titleLoadingSources.push(...missing)
+      try {
+        // 章节可能包含上百篇文档，分批请求避免单次请求过大，也便于失败后重试。
+        for (let i = 0; i < missing.length; i += 60) {
+          const batch = missing.slice(i, i + 60)
+          const data = await request(API.docsTitles(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(batch),
+            timeout: 30000,
+          })
+          Object.assign(this.titlesBySource, data.titles || {})
+        }
+      } catch (e) {
+        this.titleError = e.message
+        console.warn('文档标题加载失败', e)
+      } finally {
+        this.titleLoadingSources = this.titleLoadingSources.filter(
+          (source) => !missing.includes(source)
+        )
       }
     },
 
@@ -138,6 +221,72 @@ export const useDocsStore = defineStore('docs', {
       this.readerOpen = false
       this.activeChunkIndex = null
       this.pendingChunkIndex = null
+    },
+
+    async openExplorer(key, preferredSource = null) {
+      this.explorerOpen = true
+      this.explorerNavOpen = true
+      this.explorerDoc = null
+      this.explorerDocError = ''
+      await this.selectExplorerDomain(key, preferredSource)
+    },
+
+    async selectExplorerDomain(key, preferredSource = null) {
+      this.explorerDomain = key
+      this.explorerNavOpen = true
+      const sources = this.sourcesForDomain(key)
+      const titleTask = this.ensureTitles(sources)
+      const targetSource = (
+        preferredSource && this.domainOfSource(preferredSource) === key
+          ? preferredSource
+          : sources[0]
+      )
+      if (this.explorerDomain !== key) return
+      if (targetSource && this.explorerDoc?.source !== targetSource) {
+        await this.openExplorerDoc(targetSource)
+      }
+      await titleTask
+    },
+
+    toggleExplorerDomain(key) {
+      if (this.explorerDomain === key && this.explorerNavOpen) {
+        this.explorerNavOpen = false
+        return
+      }
+      this.selectExplorerDomain(key)
+    },
+
+    async openInExplorer(source) {
+      const key = this.domainOfSource(source)
+      if (!key) return
+      this.readerOpen = false
+      this.activeChunkIndex = null
+      this.pendingChunkIndex = null
+      await this.openExplorer(key, source)
+    },
+
+    async openExplorerDoc(source) {
+      this.explorerDocLoading = true
+      this.explorerDocError = ''
+      try {
+        const data = await request(API.doc(source))
+        if (this.explorerOpen && this.domainOfSource(source) === this.explorerDomain) {
+          this.explorerDoc = data
+        }
+      } catch (e) {
+        this.explorerDocError = e.message
+      } finally {
+        this.explorerDocLoading = false
+      }
+    },
+
+    closeExplorer() {
+      this.explorerOpen = false
+      this.explorerDomain = null
+      this.explorerNavOpen = true
+      this.explorerDoc = null
+      this.explorerDocError = ''
+      this.explorerDocLoading = false
     },
 
     domainOfSource(source) {

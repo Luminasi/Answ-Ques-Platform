@@ -131,7 +131,6 @@ onBeforeUnmount(() => {
           <span class="card-zh">{{ d.zh }}</span>
           <span class="card-en">{{ d.key }}</span>
           <span class="card-desc">{{ d.desc }}</span>
-          <span class="card-cta">点击查看文档 →</span>
         </span>
       </button>
     </div>
@@ -240,21 +239,10 @@ onBeforeUnmount(() => {
   color: var(--text-dim);
   margin-top: 0.55rem;
 }
-.card-cta {
-  margin-top: 0.9rem;
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--card-color);
-  opacity: 0;
-  transform: translateY(4px);
-  transition: all 0.3s var(--ease-out);
-}
-.domain-card.front .card-cta { opacity: 1; transform: none; }
-
 @media (max-width: 640px) {
   .ring { --card-w: 185px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .domain-card, .card-glow, .card-cta { transition: none; }
+  .domain-card, .card-glow { transition: none; }
 }
 </style>

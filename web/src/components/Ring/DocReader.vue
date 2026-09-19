@@ -23,6 +23,10 @@ function chunkHtml(content) {
   return renderMarkdown(content)
 }
 
+function openInExplorer() {
+  if (docs.currentDoc?.source) docs.openInExplorer(docs.currentDoc.source)
+}
+
 async function scrollToActiveChunk() {
   const index = docs.activeChunkIndex
   if (index == null) return
@@ -68,6 +72,14 @@ watch(
           <div v-else-if="docs.currentDoc && activeChunk" class="single-chunk" :data-chunk-index="activeChunk.index">
             <div class="chunk-label">Chunk {{ activeChunk.index }}</div>
             <div class="md chunk-md" v-html="chunkHtml(activeChunk.content)"></div>
+            <div class="chunk-actions">
+              <button class="open-explorer-btn" @click="openInExplorer">
+                跳转到文档界面
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <div v-else-if="docs.currentDoc" class="md reader-md" v-html="fallbackHtml"></div>
         </div>
@@ -157,6 +169,31 @@ watch(
   color: var(--accent);
   margin-bottom: 0.55rem;
   font-weight: 700;
+}
+.chunk-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(180, 83, 9, 0.18);
+}
+.open-explorer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.48rem 0.85rem;
+  border: 1px solid rgba(180, 83, 9, 0.3);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: transform 0.2s var(--ease-out), background 0.2s, border-color 0.2s;
+}
+.open-explorer-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(180, 83, 9, 0.52);
+  background: #fff;
 }
 
 .reader-loading { display: flex; flex-direction: column; gap: 0.8rem; padding-top: 0.5rem; }
